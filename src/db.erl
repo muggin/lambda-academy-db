@@ -31,44 +31,34 @@ read(Key, DbRef) ->
 match(Element, DbRef) ->
   match_element(Element, DbRef, []).
 
+
 %% Part 1 methods
+write_element(Key, NewElement, [{Key, _}| T], NewDbRef) ->
+  [{Key, NewElement}| NewDbRef] ++ T;
+write_element(Key, Element, [H| T], NewDbRef) ->
+  write_element(Key, Element, T, [H| NewDbRef]);
 write_element(Key, Element, [], NewDbRef) ->
-  [{Key, Element}|NewDbRef];
-write_element(Key, Element, [{HKey, HElement}|T], NewDbRef) ->
-  case Key == HKey of
-    true ->
-      write_element(Key, Element, T, NewDbRef);
-    false ->
-      write_element(Key, Element, T, [{HKey, HElement}|NewDbRef])
-  end.
+  [{Key, Element}| NewDbRef].
 
+
+delete_element(Key, [{Key, _}| T], NewDbRef) ->
+  NewDbRef ++ T;
+delete_element(Key, [H| T], NewDbRef) ->
+  delete_element(Key, T, [H | NewDbRef]);
 delete_element(_, [], NewDbRef) ->
-  NewDbRef;
-delete_element(Key, [{HKey, HElement}|T], NewDbRef) ->
-  case Key == HKey of
-    true ->
-      delete_element(Key, T, NewDbRef);
-    false ->
-      delete_element(Key, T, [{HKey, HElement}|NewDbRef])
-  end.
+  NewDbRef.
 
+read_element(Key, [{Key, Element}| _]) ->
+  {ok, Element};
+read_element(Key, [_| T]) ->
+  read_element(Key, T);
 read_element(_, []) ->
-  {error, instance};
-read_element(Key, [{HKey, HElement}|T]) ->
-  case Key == HKey of
-    true ->
-      {ok, HElement};
-    false ->
-      read_element(Key, T)
-  end.
+  {error, instance}.
 
+
+match_element(Element, [{Key, Element}| T], AccList) ->
+  match_element(Element, T, [Key| AccList]);
+match_element(Element, [_| T], AccList) ->
+  match_element(Element, T, AccList);
 match_element(_, [], AccList) ->
-  AccList;
-match_element(Element, [{HKey, HElement}| T], AccList) ->
-  case Element == HElement of
-    true ->
-      match_element(Element, T, [HKey|AccList]);
-    false ->
-      match_element(Element, T, AccList)
-  end.
-
+  {ok, AccList}.

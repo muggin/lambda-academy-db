@@ -19,12 +19,7 @@ start() ->
 
 stop() ->
   server ! {self(), stop},
-  receive
-    Response ->
-      Response
-  after 5000 ->
-    {error, timeout}
-  end.
+  ok.
 
 lock() ->
   server ! {self(), lock},
@@ -46,21 +41,11 @@ unlock() ->
 
 write(Key, Element) ->
   server ! {self(), {write, Key, Element}},
-  receive
-    Response ->
-      Response
-  after 5000 ->
-    {error, timeout}
-  end.
+  ok.
 
 delete(Key) ->
   server ! {self(), {delete, Key}},
-  receive
-    Response ->
-      Response
-  after 5000 ->
-    {error, timeout}
-  end.
+  ok.
 
 read(Key) ->
   server ! {self(), {read, Key}},
@@ -81,26 +66,24 @@ match(Element) ->
   end.
 
 db_loop(DbRef, server) ->
+  io:format("Server in unlocked state.~n"),
   receive
     {Client, lock} ->
       Client ! locked,
       db_loop(DbRef, Client);
-    {Client, stop} ->
-      unregister(server),
-      Client ! stopped;
-    {Client, _} ->
-      Client ! {error, unlock_command_error},
+    {_, stop} ->
+      ok;
+    {_, _} ->
       db_loop(DbRef, server)
   end;
 db_loop(DbRef, LockingClient) ->
+  io:format("Server in locked state.~n"),
   receive
     {LockingClient, {write, K, E}} ->
       NewDbRef = db:write(K, E, DbRef),
-      LockingClient ! written,
       db_loop(NewDbRef, LockingClient);
     {LockingClient, {delete, K}} ->
       NewDbRef = db:delete(K, DbRef),
-      LockingClient ! deleted,
       db_loop(NewDbRef, LockingClient);
     {LockingClient, {read, K}} ->
       LockingClient ! db:read(K, DbRef),
@@ -112,7 +95,7 @@ db_loop(DbRef, LockingClient) ->
       LockingClient ! unlocked,
       db_loop(DbRef, server);
     {LockingClient, stop} ->
-      LockingClient ! stopped
-  after 5000 ->
+      ok
+  after 10000 ->
     db_loop(DbRef, server)
   end.
